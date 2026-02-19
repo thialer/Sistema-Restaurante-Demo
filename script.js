@@ -166,10 +166,11 @@ function fecharModal() {
 btnConfirmar.addEventListener("click", () => {
   if (!pizzaSelecionada || escolhidos.length === 0) return;
 
-  cart.push({
-    ...pizzaSelecionada,
-    sabores: [...escolhidos],
-  });
+cart.push({
+  ...pizzaSelecionada,
+  sabores: [...escolhidos],
+  quantidade: 1,
+});
 
   escolhidos = [];
   atualizarTudo();
@@ -357,24 +358,22 @@ document.querySelectorAll(".add-to-cart-btn").forEach((btn) => {
       return;
     }
 
-if (btn.dataset.type === "produto") {
+    if (btn.dataset.type === "produto") {
+      const itemExistente = cart.find((p) => p.nome === item.nome);
 
-  const itemExistente = cart.find(p => p.nome === item.nome);
+      if (itemExistente) {
+        itemExistente.quantidade += 1;
+      } else {
+        cart.push({
+          ...item,
+          quantidade: 1,
+        });
+      }
 
-  if (itemExistente) {
-    itemExistente.quantidade += 1;
-  } else {
-    cart.push({
-      ...item,
-      quantidade: 1
-    });
-  }
-
-  atualizarCarrinho();
-  mostrarToast();
-  return;
-}
-
+      atualizarCarrinho();
+      mostrarToast();
+      return;
+    }
 
     // 🍕 PIZZA → abre modal
     pizzaSelecionada = item;
@@ -387,9 +386,20 @@ function atualizarCarrinho() {
   let total = 0;
 
   cart.forEach((item, index) => {
-
     const quantidade = item.quantidade || 1;
-    total += item.preco * quantidade;
+
+let adicionalSabores = 0;
+
+item.sabores.forEach((sabor) => {
+  const match = sabor.match(/\+ R\$(\d+)/);
+  if (match) {
+    adicionalSabores += parseInt(match[1]);
+  }
+});
+
+    const precoFinal = (item.preco + adicionalSabores) * quantidade;
+
+    total += precoFinal;
 
     cartItems.innerHTML += `
       <div class="flex gap-3 items-center border-b pb-3">
@@ -403,27 +413,30 @@ function atualizarCarrinho() {
         <div class="flex-1">
           <p class="font-bold">${item.nome}</p>
           
-          ${item.sabores.length > 0 ? `
+          ${
+            item.sabores.length > 0
+              ? `
             <p class="text-sm text-gray-500">
               Sabores: ${item.sabores.join(", ")}
             </p>
-          ` : ""}
+          `
+              : ""
+          }
 
           <p class="font-medium mt-1">
-            R$ ${(item.preco * quantidade).toFixed(2)}
-          </p>
+R$ ${precoFinal.toFixed(2)}          </p>
         </div>
 
         ${
           item.quantidade
             ? `
           <div class="flex items-center gap-2">
-            <button onclick="diminuirQtd('${item.nome}')" 
+            <button onclick="diminuirQtd(${index})"
               class="bg-gray-300 px-2 rounded">-</button>
 
             <span>${quantidade}</span>
 
-            <button onclick="aumentarQtd('${item.nome}')" 
+            <button onclick="aumentarQtd(${index})"
               class="bg-gray-300 px-2 rounded">+</button>
           </div>
         `
@@ -439,10 +452,10 @@ function atualizarCarrinho() {
     `;
   });
 
-cartCount.textContent = cart.reduce(
-  (acc, item) => acc + (item.quantidade || 1),
-  0
-);
+  cartCount.textContent = cart.reduce(
+    (acc, item) => acc + (item.quantidade || 1),
+    0,
+  );
   cartTotal.textContent = `R$ ${total.toFixed(2)}`;
   totalWithDelivery.textContent = `R$ ${(total + 6).toFixed(2)}`;
 }
@@ -612,19 +625,30 @@ function finalizarPedido() {
 
   let total = 0;
 
-const itensMensagem = cart
-  .map((item) => {
-    const quantidade = item.quantidade || 1;
-    total += item.preco * quantidade;
+  const itensMensagem = cart
+    .map((item) => {
+      const quantidade = item.quantidade || 1;
 
-    return `• ${item.nome}
+let adicionalSabores = 0;
+
+item.sabores.forEach((sabor) => {
+  const match = sabor.match(/\+ R\$(\d+)/);
+  if (match) {
+    adicionalSabores += parseInt(match[1]);
+  }
+});
+
+      const precoFinal = (item.preco + adicionalSabores) * quantidade;
+
+      total += precoFinal;
+
+      return `• ${item.nome}
 Qtd: ${quantidade}
 Sabores: ${item.sabores.length ? item.sabores.join(", ") : "—"}
-R$ ${(item.preco * quantidade).toFixed(2)}
+R$ ${precoFinal.toFixed(2)}
 `;
-  })
-  .join("\n");
-
+    })
+    .join("\n");
 
   const totalComEntrega = total + 6;
 
@@ -660,6 +684,7 @@ Observações: ${observacoesInput.value || "—"}`,
   );
 
   window.open(`https://wa.me/5541999316134?text=${mensagem}`, "_blank");
+
 }
 
 function checkRestaurantOpen() {
@@ -708,25 +733,16 @@ function ativarBotao(botaoAtivo) {
   botaoAtivo.classList.add("bg-gray-700", "text-white");
 }
 
-
-
-function aumentarQtd(nome) {
-  const item = cart.find(p => p.nome === nome);
-  if (item) {
-    item.quantidade += 1;
-    atualizarCarrinho();
-  }
+function aumentarQtd(index) {
+  cart[index].quantidade += 1;
+  atualizarCarrinho();
 }
 
-function diminuirQtd(nome) {
-  const item = cart.find(p => p.nome === nome);
+function diminuirQtd(index) {
+  cart[index].quantidade -= 1;
 
-  if (!item) return;
-
-  item.quantidade -= 1;
-
-  if (item.quantidade <= 0) {
-    cart = cart.filter(p => p.nome !== nome);
+  if (cart[index].quantidade <= 0) {
+    cart.splice(index, 1);
   }
 
   atualizarCarrinho();
