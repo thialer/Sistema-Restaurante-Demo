@@ -977,10 +977,6 @@ video {
   background-color: rgb(24 24 27 / var(--tw-bg-opacity, 1));
 }
 
-.bg-home {
-  background-image: url('/Sistema-Restaurante-Demo/assets/bg.png');
-}
-
 .bg-cover {
   background-size: cover;
 }
